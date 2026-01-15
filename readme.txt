@@ -22,7 +22,14 @@ Bring the winter spirit to your WordPress site with the Winter Snow Effect plugi
 
 == Installation ==
 
-1.  Upload the plugin files to the `/wp-content/plugins/winter-snow-effect` directory, or install the plugin through the WordPress plugins screen directly.
+**From WordPress.org:**
+1.  Visit the plugin page: https://wordpress.org/plugins/winter-snow-effect/
+2.  Click "Download" or install directly from your WordPress admin dashboard by searching for "Winter Snow Effect".
+3.  Activate the plugin through the 'Plugins' screen in WordPress.
+4.  Enjoy the snow during the winter months!
+
+**Manual Installation:**
+1.  Upload the plugin files to the `/wp-content/plugins/winter-snow-effect` directory.
 2.  Activate the plugin through the 'Plugins' screen in WordPress.
 3.  Enjoy the snow during the winter months!
 
