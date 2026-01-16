@@ -66,18 +66,31 @@ function wse_should_activate() {
 	// Auto mode: check date range
 	$current_date = current_time( 'Y-m-d' );
 	$current_year = (int) current_time( 'Y' );
+	$current_month = (int) current_time( 'n' );
 	
-	$start_date = sprintf( '%d-%02d-%02d', $current_year, $settings['start_month'], $settings['start_day'] );
-	$end_date = sprintf( '%d-%02d-%02d', $current_year, $settings['end_month'], $settings['end_day'] );
-
 	// Handle year wrap-around (e.g., Dec 1 to Feb 28)
 	if ( $settings['start_month'] > $settings['end_month'] ) {
 		// Cross-year range (e.g., Dec to Feb)
-		if ( $current_date >= $start_date || $current_date <= $end_date ) {
+		// Determine which year's range we're checking
+		if ( $current_month >= $settings['start_month'] ) {
+			// We're in Dec or later, so start is this year, end is next year
+			$start_date = sprintf( '%d-%02d-%02d', $current_year, $settings['start_month'], $settings['start_day'] );
+			$end_date = sprintf( '%d-%02d-%02d', $current_year + 1, $settings['end_month'], $settings['end_day'] );
+		} else {
+			// We're before Dec (Jan/Feb), so start was last year, end is this year
+			$start_date = sprintf( '%d-%02d-%02d', $current_year - 1, $settings['start_month'], $settings['start_day'] );
+			$end_date = sprintf( '%d-%02d-%02d', $current_year, $settings['end_month'], $settings['end_day'] );
+		}
+		
+		// Check if current date is in range
+		if ( $current_date >= $start_date && $current_date <= $end_date ) {
 			return true;
 		}
 	} else {
 		// Same year range
+		$start_date = sprintf( '%d-%02d-%02d', $current_year, $settings['start_month'], $settings['start_day'] );
+		$end_date = sprintf( '%d-%02d-%02d', $current_year, $settings['end_month'], $settings['end_day'] );
+		
 		if ( $current_date >= $start_date && $current_date <= $end_date ) {
 			return true;
 		}
@@ -93,6 +106,11 @@ function wse_register_settings() {
 	register_setting( 'wse_settings_group', 'wse_settings', array(
 		'sanitize_callback' => 'wse_sanitize_settings',
 	) );
+	
+	// Redirect to show success message
+	if ( isset( $_POST['submit'] ) && isset( $_POST['option_page'] ) && 'wse_settings_group' === $_POST['option_page'] ) {
+		add_settings_error( 'wse_settings', 'wse_settings_saved', __( 'Settings saved successfully!', 'winter-snow-effect' ), 'updated' );
+	}
 }
 add_action( 'admin_init', 'wse_register_settings' );
 
