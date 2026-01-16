@@ -209,6 +209,26 @@ function wse_add_admin_menu() {
 add_action( 'admin_menu', 'wse_add_admin_menu' );
 
 /**
+ * Add settings link to plugins page.
+ *
+ * @param array $links Existing plugin action links.
+ * @return array Modified plugin action links.
+ */
+function wse_add_plugin_action_links( $links ) {
+	$settings_link = sprintf(
+		'<a href="%s">%s</a>',
+		esc_url( admin_url( 'options-general.php?page=winter-snow-effect' ) ),
+		esc_html__( 'Settings', 'winter-snow-effect' )
+	);
+	
+	// Add settings link at the beginning of the links array
+	array_unshift( $links, $settings_link );
+	
+	return $links;
+}
+add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'wse_add_plugin_action_links' );
+
+/**
  * Render settings page.
  */
 function wse_render_settings_page() {
