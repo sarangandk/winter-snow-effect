@@ -3,6 +3,27 @@
 */
 
 (function () {
+    // Get settings from PHP (with fallback defaults)
+    const settings = typeof wseSettings !== 'undefined' ? wseSettings : {
+        flakeCountMobile: 6,
+        flakeCountDesktop: 35,
+        flakeSizeMin: 10,
+        flakeSizeMax: 30,
+        flakeSpeedMin: 0.5,
+        flakeSpeedMax: 1.5,
+        flakeOpacityMin: 0.6,
+        flakeOpacityMax: 0.9,
+        respectReducedMotion: true,
+        pauseOnScroll: false,
+        pauseOnInactive: true,
+    };
+
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (settings.respectReducedMotion && prefersReducedMotion) {
+        return; // Exit early if user prefers reduced motion
+    }
+
     // Create canvas
     const canvas = document.createElement('canvas');
     canvas.id = 'wse-snow-canvas';
@@ -18,18 +39,40 @@
     // Snowflakes array
     const flakes = [];
     // Adjust flake count based on screen width
-    // < 768px (mobile): 6 flakes (as requested)
-    // >= 768px (desktop): 35 flakes
     const isMobile = window.innerWidth < 768;
-    const maxFlakes = isMobile ? 6 : 35;
+    const maxFlakes = isMobile ? settings.flakeCountMobile : settings.flakeCountDesktop;
+
+    // Animation state
+    let isPaused = false;
+    let animationId = null;
 
     // Resize handler
-    window.addEventListener('resize', function () {
+    function handleResize() {
         width = window.innerWidth;
         height = window.innerHeight;
         canvas.width = width;
         canvas.height = height;
-    });
+    }
+    window.addEventListener('resize', handleResize);
+
+    // Performance optimizations: pause on scroll
+    if (settings.pauseOnScroll) {
+        let scrollTimeout;
+        window.addEventListener('scroll', function () {
+            isPaused = true;
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(function () {
+                isPaused = false;
+            }, 150); // Resume after 150ms of no scrolling
+        }, { passive: true });
+    }
+
+    // Performance optimizations: pause on inactive tab
+    if (settings.pauseOnInactive) {
+        document.addEventListener('visibilitychange', function () {
+            isPaused = document.hidden;
+        });
+    }
 
     // Snowflake class
     class Snowflake {
@@ -37,21 +80,28 @@
             this.x = Math.random() * width;
             this.y = Math.random() * height;
 
-            // Adjust size based on device
-            // Mobile: 20px - 35px (Bigger flakes)
-            // Desktop: 10px - 30px
-            this.size = isMobile
-                ? Math.random() * 15 + 20
-                : Math.random() * 20 + 10;
+            // Use settings for size range
+            const sizeRange = settings.flakeSizeMax - settings.flakeSizeMin;
+            this.size = Math.random() * sizeRange + settings.flakeSizeMin;
 
-            this.speed = Math.random() * 1 + 0.5; // Moderate gentle speed
+            // Use settings for speed range
+            const speedRange = settings.flakeSpeedMax - settings.flakeSpeedMin;
+            this.speed = Math.random() * speedRange + settings.flakeSpeedMin;
+
             this.sway = Math.random() - 0.5;
             this.swaySpeed = Math.random() * 0.01 + 0.005;
             this.angle = Math.random() * Math.PI * 2;
-            this.opacity = Math.random() * 0.3 + 0.6; // Higher opacity (0.6 to 0.9) for visibility
+
+            // Use settings for opacity range
+            const opacityRange = settings.flakeOpacityMax - settings.flakeOpacityMin;
+            this.opacity = Math.random() * opacityRange + settings.flakeOpacityMin;
         }
 
         update() {
+            if (isPaused) {
+                return; // Don't update position when paused
+            }
+
             this.y += this.speed;
             this.angle += this.swaySpeed;
             this.x += Math.sin(this.angle) * 1.5;
@@ -90,13 +140,23 @@
 
     // Animation loop
     function animate() {
-        ctx.clearRect(0, 0, width, height);
-        flakes.forEach(flake => {
-            flake.update();
-            flake.draw();
-        });
-        requestAnimationFrame(animate);
+        if (!isPaused) {
+            ctx.clearRect(0, 0, width, height);
+            flakes.forEach(flake => {
+                flake.update();
+                flake.draw();
+            });
+        }
+        animationId = requestAnimationFrame(animate);
     }
 
+    // Start animation
     animate();
+
+    // Cleanup on page unload (optional, but good practice)
+    window.addEventListener('beforeunload', function () {
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+        }
+    });
 })();
