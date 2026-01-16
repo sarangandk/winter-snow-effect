@@ -1,227 +1,214 @@
 /*
-* Winter Snow Effect - Lightweight Snow JS
+* Winter Snow Effect - Lightweight Snow JS (Robust Version)
 */
 
 (function () {
-    // Wait for DOM to be ready
-    function initSnow() {
-        // Get settings from PHP (with fallback defaults)
-        const settings = typeof wseSettings !== 'undefined' ? wseSettings : {
-            flakeCountMobile: 6,
-            flakeCountDesktop: 35,
-            flakeSizeMin: 10,
-            flakeSizeMax: 30,
-            flakeSpeedMin: 0.5,
-            flakeSpeedMax: 1.5,
-            flakeOpacityMin: 0.6,
-            flakeOpacityMax: 0.9,
-            respectReducedMotion: true,
-            pauseOnScroll: false,
-            pauseOnInactive: true,
-        };
+    let animationId = null;
+    let canvas = null;
+    let ctx = null;
+    let flakes = [];
+    let width = 0;
+    let height = 0;
+    let dpr = window.devicePixelRatio || 1;
+    let isPaused = false;
+    let lastLogTime = 0;
 
+    // Get settings from PHP (with fallback defaults)
+    const settings = typeof wseSettings !== 'undefined' ? wseSettings : {
+        flakeCountMobile: 12,
+        flakeCountDesktop: 50,
+        flakeSizeMin: 12,
+        flakeSizeMax: 40,
+        flakeSpeedMin: 0.5,
+        flakeSpeedMax: 1.5,
+        flakeOpacityMin: 0.6,
+        flakeOpacityMax: 0.9,
+        respectReducedMotion: true,
+        pauseOnScroll: false,
+        pauseOnInactive: true,
+    };
+
+    function log(msg, ...args) {
+        console.log(`%cWinter Snow Effect: %c${msg}`, "color: #2271b1; font-weight: bold;", "color: inherit;", ...args);
+    }
+
+    function initSnow() {
         // Check for reduced motion preference
-        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (settings.respectReducedMotion && prefersReducedMotion) {
-            console.log('Winter Snow Effect: Disabled due to reduced motion preference');
-            return; // Exit early if user prefers reduced motion
+        if (settings.respectReducedMotion && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            log('Disabled due to OS "Reduced Motion" setting.');
+            return;
         }
 
-        // Ensure body exists
-        if (!document.body) {
-            console.log('Winter Snow Effect: Body not found, retrying...');
+        // Avoid double initialization
+        if (document.getElementById('wse-snow-canvas')) {
+            return;
+        }
+
+        const container = document.body || document.documentElement;
+        if (!container) {
             setTimeout(initSnow, 100);
             return;
         }
 
-        console.log('Winter Snow Effect: Initializing...', settings);
+        log('Initializing...', settings);
 
-        // Check if canvas already exists (avoid duplicates)
-        let canvas = document.getElementById('wse-snow-canvas');
-        if (!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.id = 'wse-snow-canvas';
-            document.body.appendChild(canvas);
-            console.log('Winter Snow Effect: Canvas created');
-        }
+        canvas = document.createElement('canvas');
+        canvas.id = 'wse-snow-canvas';
+        canvas.setAttribute('data-wse-version', '2.1');
+        container.appendChild(canvas);
 
-        const ctx = canvas.getContext('2d');
+        ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) {
             console.error('Winter Snow Effect: Could not get 2D context');
             return;
         }
 
-        let width = window.innerWidth;
-        let height = window.innerHeight;
+        updateDimensions();
+        createFlakes();
+        setupListeners();
 
-        canvas.width = width;
-        canvas.height = height;
+        log(`Initialized with ${flakes.length} flakes. Canvas size: ${canvas.width}x${canvas.height}`);
 
-        // Snowflakes array
-        const flakes = [];
-        // Adjust flake count based on screen width
-        const isMobile = window.innerWidth < 768;
+        animate();
+    }
+
+    function updateDimensions() {
+        width = window.innerWidth || document.documentElement.clientWidth;
+        height = window.innerHeight || document.documentElement.clientHeight;
+        dpr = window.devicePixelRatio || 1;
+
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+
+        // Context scaling is reset when canvas dimensions change
+        ctx.scale(dpr, dpr);
+    }
+
+    function createFlakes() {
+        const isMobile = width < 768;
         const maxFlakes = isMobile ? settings.flakeCountMobile : settings.flakeCountDesktop;
-        
-        console.log('Winter Snow Effect: Creating', maxFlakes, 'snowflakes (isMobile:', isMobile, ')');
 
-        // Animation state
-        let isPaused = false;
-        let animationId = null;
-
-        // Resize handler
-        function handleResize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
-        }
-        window.addEventListener('resize', handleResize);
-
-        // Performance optimizations: pause on scroll
-        if (settings.pauseOnScroll) {
-            let scrollTimeout;
-            window.addEventListener('scroll', function () {
-                isPaused = true;
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(function () {
-                    isPaused = false;
-                }, 150); // Resume after 150ms of no scrolling
-            }, { passive: true });
-        }
-
-        // Performance optimizations: pause on inactive tab
-        if (settings.pauseOnInactive) {
-            document.addEventListener('visibilitychange', function () {
-                isPaused = document.hidden;
-            });
-        }
-
-        // Snowflake class
-        class Snowflake {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-
-                // Use settings for size range
-                const sizeRange = settings.flakeSizeMax - settings.flakeSizeMin;
-                this.size = Math.random() * sizeRange + settings.flakeSizeMin;
-
-                // Use settings for speed range
-                const speedRange = settings.flakeSpeedMax - settings.flakeSpeedMin;
-                this.speed = Math.random() * speedRange + settings.flakeSpeedMin;
-
-                this.sway = Math.random() - 0.5;
-                this.swaySpeed = Math.random() * 0.01 + 0.005;
-                this.angle = Math.random() * Math.PI * 2;
-
-                // Use settings for opacity range
-                const opacityRange = settings.flakeOpacityMax - settings.flakeOpacityMin;
-                this.opacity = Math.random() * opacityRange + settings.flakeOpacityMin;
-            }
-
-            update() {
-                if (isPaused) {
-                    return; // Don't update position when paused
-                }
-
-                this.y += this.speed;
-                this.angle += this.swaySpeed;
-                this.x += Math.sin(this.angle) * 1.5;
-
-                // Wrap around screen
-                if (this.y > height) {
-                    this.y = -10;
-                    this.x = Math.random() * width;
-                }
-                if (this.x > width) {
-                    this.x = 0;
-                } else if (this.x < 0) {
-                    this.x = width;
-                }
-            }
-
-            draw() {
-                // Set font before drawing
-                ctx.font = `${this.size}px Arial, sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-
-                // Shadow for visibility
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-                ctx.shadowBlur = 4;
-
-                // Draw snowflake character
-                ctx.fillText('*', this.x, this.y);
-
-                // Reset shadow to avoid affecting other potential draws if shared context (good practice)
-                ctx.shadowBlur = 0;
-                ctx.shadowColor = 'transparent';
-            }
-        }
-
-        // Initialize flakes
+        flakes = [];
         for (let i = 0; i < maxFlakes; i++) {
             flakes.push(new Snowflake());
         }
-        
-        console.log('Winter Snow Effect: Initialized', flakes.length, 'snowflakes');
+    }
 
-        // Animation loop
-        function animate() {
-            if (!isPaused) {
-                ctx.clearRect(0, 0, width, height);
-                flakes.forEach(flake => {
-                    flake.update();
-                    flake.draw();
-                });
-            }
-            animationId = requestAnimationFrame(animate);
+    class Snowflake {
+        constructor() {
+            this.reset(true);
         }
 
-        // Test: Draw a test snowflake immediately to verify canvas works
-        if (flakes.length > 0) {
+        reset(isInitial = false) {
+            this.x = Math.random() * width;
+            this.y = isInitial ? Math.random() * height : -20;
+
+            const sizeRange = settings.flakeSizeMax - settings.flakeSizeMin;
+            this.size = Math.random() * sizeRange + settings.flakeSizeMin;
+
+            const speedRange = settings.flakeSpeedMax - settings.flakeSpeedMin;
+            this.speed = Math.random() * speedRange + settings.flakeSpeedMin;
+
+            this.swaySpeed = Math.random() * 0.02 + 0.01;
+            this.angle = Math.random() * Math.PI * 2;
+
+            const opacityRange = settings.flakeOpacityMax - settings.flakeOpacityMin;
+            this.opacity = Math.random() * opacityRange + settings.flakeOpacityMin;
+
+            // Random very subtle blue tint for visibility
+            this.color = Math.random() > 0.8 ? 'rgba(230, 245, 255, ' : 'rgba(255, 255, 255, ';
+        }
+
+        update() {
+            if (isPaused) return;
+
+            this.y += this.speed;
+            this.angle += this.swaySpeed;
+            this.x += Math.sin(this.angle) * 1.5;
+
+            if (this.y > height + this.size) {
+                this.reset();
+            }
+
+            if (this.x > width + this.size) {
+                this.x = -this.size;
+            } else if (this.x < -this.size) {
+                this.x = width + this.size;
+            }
+        }
+
+        draw() {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+
+            ctx.fillStyle = this.color + this.opacity + ')';
+
+            // Slightly stronger shadow for visibility
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 4;
+
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function animate(time) {
+        if (!isPaused) {
             ctx.clearRect(0, 0, width, height);
-            flakes[0].draw();
-            console.log('Winter Snow Effect: Test draw completed at position', flakes[0].x, flakes[0].y);
-        }
+            flakes.forEach(flake => {
+                flake.update();
+                flake.draw();
+            });
 
-        // Start animation
-        animate();
-        console.log('Winter Snow Effect: Animation started');
-
-        // Cleanup on page unload (optional, but good practice)
-        window.addEventListener('beforeunload', function () {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
+            // Diagnostic log every 10 seconds to console if running
+            if (time - lastLogTime > 10000) {
+                log('Animation running smoothly...');
+                lastLogTime = time;
             }
-        });
+        }
+        animationId = requestAnimationFrame(animate);
     }
 
-    // Initialize when DOM is ready - try multiple methods
-    function tryInit() {
-        if (document.body) {
-            initSnow();
-        } else if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initSnow);
-            // Fallback in case DOMContentLoaded already fired
-            setTimeout(initSnow, 100);
-        } else {
-            // DOM is already ready
-            initSnow();
+    function setupListeners() {
+        window.addEventListener('resize', () => {
+            updateDimensions();
+        }, { passive: true });
+
+        if (settings.pauseOnScroll) {
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                isPaused = true;
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    isPaused = false;
+                }, 150);
+            }, { passive: true });
+        }
+
+        if (settings.pauseOnInactive) {
+            document.addEventListener('visibilitychange', () => {
+                isPaused = document.hidden;
+                if (!isPaused) log('Tab became active, resuming snow.');
+            });
         }
     }
 
-    // Try immediately
-    tryInit();
-    
-    // Also try on window load as fallback
-    window.addEventListener('load', function() {
-        // Only init if canvas doesn't exist yet
-        if (!document.getElementById('wse-snow-canvas')) {
-            console.log('Winter Snow Effect: Retrying initialization on window load');
-            initSnow();
-        }
+    // Try multiple init methods
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSnow);
+    } else {
+        initSnow();
+    }
+
+    // Final fallback
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            if (!document.getElementById('wse-snow-canvas')) {
+                log('Late initialization triggered.');
+                initSnow();
+            }
+        }, 500);
     });
+
 })();

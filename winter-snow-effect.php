@@ -2,7 +2,7 @@
 /*
 Plugin Name: Winter Snow Effect
 Description: Automatically adds a falling snow effect to your website only during winter months (December, January, February).
-Version: 2.0
+Version: 2.1
 Author: Sarangan Thillaiampalam
 Author URI: https://sarangan.dk
 License: GPL2
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'WSE_VERSION', '2.0' );
+define( 'WSE_VERSION', '2.1' );
 define( 'WSE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WSE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -29,10 +29,10 @@ function wse_get_settings() {
 		'start_day'            => 1,
 		'end_month'            => 2, // February
 		'end_day'              => 28,
-		'flake_count_mobile'   => 6,
-		'flake_count_desktop'  => 35,
-		'flake_size_min'       => 10,
-		'flake_size_max'       => 30,
+		'flake_count_mobile'   => 12,
+		'flake_count_desktop'  => 50,
+		'flake_size_min'       => 12,
+		'flake_size_max'       => 40,
 		'flake_speed_min'      => 0.5,
 		'flake_speed_max'      => 1.5,
 		'flake_opacity_min'    => 0.6,
@@ -59,7 +59,7 @@ function wse_should_activate() {
 	}
 
 	// Manual override: on
-	if ( 'on' === $settings['enabled'] ) {
+	if ( 'on' === $settings['enabled'] || isset( $_GET['wse_debug'] ) ) {
 		return true;
 	}
 
@@ -269,7 +269,8 @@ function wse_render_settings_page() {
 					<ol style="margin: 8px 0 0 20px; padding: 0;">
 						<li><?php esc_html_e( 'Open your browser\'s developer console (F12) and check for any errors', 'winter-snow-effect' ); ?></li>
 						<li><?php esc_html_e( 'Look for messages starting with "Winter Snow Effect:" in the console', 'winter-snow-effect' ); ?></li>
-						<li><?php esc_html_e( 'Check the Network tab to verify snow.js is loading (status 200)', 'winter-snow-effect' ); ?></li>
+						<li><?php esc_html_e( 'Verify if your browser has "Reduced Motion" enabled in system settings, as this may disable the effect', 'winter-snow-effect' ); ?></li>
+						<li><?php esc_html_e( 'Check the Network tab to verify snow.js and snow.css are loading (status 200)', 'winter-snow-effect' ); ?></li>
 						<li><?php esc_html_e( 'Try clearing your browser cache and WordPress cache if you use a caching plugin', 'winter-snow-effect' ); ?></li>
 						<li><?php esc_html_e( 'Verify the script URL is correct:', 'winter-snow-effect' ); ?> <code><?php echo esc_url( WSE_PLUGIN_URL . 'assets/js/snow.js' ); ?></code></li>
 					</ol>
@@ -494,7 +495,7 @@ function wse_enqueue_scripts() {
 		'pauseOnInactive'       => (bool) $settings['pause_on_inactive'],
 	) );
 }
-add_action( 'wp_enqueue_scripts', 'wse_enqueue_scripts' );
+add_action( 'wp_enqueue_scripts', 'wse_enqueue_scripts', 999 );
 
 /**
  * Add debug info to footer (only for admins, for troubleshooting).
