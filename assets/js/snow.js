@@ -23,20 +23,34 @@
         // Check for reduced motion preference
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (settings.respectReducedMotion && prefersReducedMotion) {
+            console.log('Winter Snow Effect: Disabled due to reduced motion preference');
             return; // Exit early if user prefers reduced motion
         }
 
         // Ensure body exists
         if (!document.body) {
+            console.log('Winter Snow Effect: Body not found, retrying...');
+            setTimeout(initSnow, 100);
             return;
         }
 
-        // Create canvas
-        const canvas = document.createElement('canvas');
-        canvas.id = 'wse-snow-canvas';
-        document.body.appendChild(canvas);
+        console.log('Winter Snow Effect: Initializing...', settings);
+
+        // Check if canvas already exists (avoid duplicates)
+        let canvas = document.getElementById('wse-snow-canvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = 'wse-snow-canvas';
+            document.body.appendChild(canvas);
+            console.log('Winter Snow Effect: Canvas created');
+        }
 
         const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Winter Snow Effect: Could not get 2D context');
+            return;
+        }
+
         let width = window.innerWidth;
         let height = window.innerHeight;
 
@@ -48,6 +62,8 @@
         // Adjust flake count based on screen width
         const isMobile = window.innerWidth < 768;
         const maxFlakes = isMobile ? settings.flakeCountMobile : settings.flakeCountDesktop;
+        
+        console.log('Winter Snow Effect: Creating', maxFlakes, 'snowflakes (isMobile:', isMobile, ')');
 
         // Animation state
         let isPaused = false;
@@ -144,6 +160,8 @@
         for (let i = 0; i < maxFlakes; i++) {
             flakes.push(new Snowflake());
         }
+        
+        console.log('Winter Snow Effect: Initialized', flakes.length, 'snowflakes');
 
         // Animation loop
         function animate() {
@@ -159,6 +177,7 @@
 
         // Start animation
         animate();
+        console.log('Winter Snow Effect: Animation started');
 
         // Cleanup on page unload (optional, but good practice)
         window.addEventListener('beforeunload', function () {

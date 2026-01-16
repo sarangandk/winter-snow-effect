@@ -257,6 +257,11 @@ function wse_render_settings_page() {
 					<span style="color: #d63638;"><?php esc_html_e( 'Inactive', 'winter-snow-effect' ); ?></span>
 				<?php endif; ?>
 			</p>
+			<?php if ( ! $is_active && 'auto' === $settings['enabled'] ) : ?>
+				<p style="margin: 8px 0 0 0; font-size: 13px;">
+					<?php esc_html_e( 'Note: Snow effect is inactive because the current date is outside the configured date range. Set "Enable Snow Effect" to "Always On" to test the effect.', 'winter-snow-effect' ); ?>
+				</p>
+			<?php endif; ?>
 		</div>
 
 		<form action="options.php" method="post">
