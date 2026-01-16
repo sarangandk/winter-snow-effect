@@ -262,6 +262,19 @@ function wse_render_settings_page() {
 					<?php esc_html_e( 'Note: Snow effect is inactive because the current date is outside the configured date range. Set "Enable Snow Effect" to "Always On" to test the effect.', 'winter-snow-effect' ); ?>
 				</p>
 			<?php endif; ?>
+			<?php if ( $is_active ) : ?>
+				<p style="margin: 8px 0 0 0; font-size: 13px;">
+					<strong><?php esc_html_e( 'Troubleshooting:', 'winter-snow-effect' ); ?></strong><br>
+					<?php esc_html_e( 'If you don\'t see snowflakes on your website:', 'winter-snow-effect' ); ?>
+					<ol style="margin: 8px 0 0 20px; padding: 0;">
+						<li><?php esc_html_e( 'Open your browser\'s developer console (F12) and check for any errors', 'winter-snow-effect' ); ?></li>
+						<li><?php esc_html_e( 'Look for messages starting with "Winter Snow Effect:" in the console', 'winter-snow-effect' ); ?></li>
+						<li><?php esc_html_e( 'Check the Network tab to verify snow.js is loading (status 200)', 'winter-snow-effect' ); ?></li>
+						<li><?php esc_html_e( 'Try clearing your browser cache and WordPress cache if you use a caching plugin', 'winter-snow-effect' ); ?></li>
+						<li><?php esc_html_e( 'Verify the script URL is correct:', 'winter-snow-effect' ); ?> <code><?php echo esc_url( WSE_PLUGIN_URL . 'assets/js/snow.js' ); ?></code></li>
+					</ol>
+				</p>
+			<?php endif; ?>
 		</div>
 
 		<form action="options.php" method="post">
@@ -462,6 +475,8 @@ function wse_enqueue_scripts() {
 	$settings = wse_get_settings();
 
 	wp_enqueue_style( 'wse-snow-style', WSE_PLUGIN_URL . 'assets/css/snow.css', array(), WSE_VERSION );
+	
+	// Enqueue script in footer
 	wp_enqueue_script( 'wse-snow-script', WSE_PLUGIN_URL . 'assets/js/snow.js', array(), WSE_VERSION, true );
 
 	// Pass settings to JavaScript
@@ -480,3 +495,26 @@ function wse_enqueue_scripts() {
 	) );
 }
 add_action( 'wp_enqueue_scripts', 'wse_enqueue_scripts' );
+
+/**
+ * Add debug info to footer (only for admins, for troubleshooting).
+ */
+function wse_add_debug_info() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	
+	if ( ! wse_should_activate() ) {
+		return;
+	}
+	
+	$settings = wse_get_settings();
+	?>
+	<!-- Winter Snow Effect Debug Info -->
+	<script type="text/javascript">
+		console.log('Winter Snow Effect: Script should be loaded. Settings:', <?php echo wp_json_encode( $settings ); ?>);
+		console.log('Winter Snow Effect: wseSettings available:', typeof wseSettings !== 'undefined');
+	</script>
+	<?php
+}
+add_action( 'wp_footer', 'wse_add_debug_info' );

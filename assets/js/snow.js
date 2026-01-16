@@ -142,17 +142,22 @@
             }
 
             draw() {
-                ctx.font = `${this.size}px sans-serif`;
+                // Set font before drawing
+                ctx.font = `${this.size}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
                 ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
 
                 // Shadow for visibility
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
                 ctx.shadowBlur = 4;
 
+                // Draw snowflake character
                 ctx.fillText('*', this.x, this.y);
 
                 // Reset shadow to avoid affecting other potential draws if shared context (good practice)
                 ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
             }
         }
 
@@ -175,6 +180,13 @@
             animationId = requestAnimationFrame(animate);
         }
 
+        // Test: Draw a test snowflake immediately to verify canvas works
+        if (flakes.length > 0) {
+            ctx.clearRect(0, 0, width, height);
+            flakes[0].draw();
+            console.log('Winter Snow Effect: Test draw completed at position', flakes[0].x, flakes[0].y);
+        }
+
         // Start animation
         animate();
         console.log('Winter Snow Effect: Animation started');
@@ -187,11 +199,29 @@
         });
     }
 
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSnow);
-    } else {
-        // DOM is already ready
-        initSnow();
+    // Initialize when DOM is ready - try multiple methods
+    function tryInit() {
+        if (document.body) {
+            initSnow();
+        } else if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSnow);
+            // Fallback in case DOMContentLoaded already fired
+            setTimeout(initSnow, 100);
+        } else {
+            // DOM is already ready
+            initSnow();
+        }
     }
+
+    // Try immediately
+    tryInit();
+    
+    // Also try on window load as fallback
+    window.addEventListener('load', function() {
+        // Only init if canvas doesn't exist yet
+        if (!document.getElementById('wse-snow-canvas')) {
+            console.log('Winter Snow Effect: Retrying initialization on window load');
+            initSnow();
+        }
+    });
 })();
