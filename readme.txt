@@ -2,7 +2,7 @@
 Contributors: sarangan112
 Tags: snow, winter, effect, seasonal, weather
 Requires at least: 5.0
-Tested up to: 7.0
+Tested up to: 7.1
 Stable tag: 1.2.3
 Requires PHP: 7.0
 License: GPLv2 or later
